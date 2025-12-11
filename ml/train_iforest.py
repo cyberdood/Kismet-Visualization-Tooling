@@ -41,7 +41,11 @@ def fetch_data(es, size=5000):
     return pd.DataFrame(docs)
 
 def main():
-    es = Elasticsearch(ES_URL, verify_certs=False)
+    es = Elasticsearch(
+    ES_URL,
+    basic_auth=(ES_USERNAME, ES_PASSWORD),
+    verify_certs=VERIFY_CERTS,
+    )
     df = fetch_data(es)
 
     if df.empty:
