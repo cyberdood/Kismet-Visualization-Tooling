@@ -10,6 +10,7 @@ ES_URL = os.getenv("ES_URL", "http://localhost:9200")          # adjust if remot
 ES_INDEX = os.getenv("ES_INDEX", "wids-wireless-features")       # same index your extractor writes to
 ES_USERNAME = os.getenv("ES_USERNAME")  # optional
 ES_PASSWORD = os.getenv("ES_PASSWORD")  # optional
+VERIFY_CERTS = os.getenv("ES_VERIFY_CERTS", "false").lower() == "true"
 
 # pick the numeric features you actually have in ES
 FEATURE_FIELDS = [
