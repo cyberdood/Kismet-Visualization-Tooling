@@ -122,7 +122,7 @@ AI-Augmented-WIDS/
 
 ### Software
 - Docker & Docker Compose  
-- Kismet installed on host  
+ 
 
 Vendor containers:
 - `elasticsearch:8.x`  
