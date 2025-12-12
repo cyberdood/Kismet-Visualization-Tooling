@@ -1,176 +1,259 @@
-# AI-Augmented Wireless Intrusion Detection System (WIDS)
-Kismet → Feature Extraction → Elasticsearch → Kibana → (Optional ML + AI Explanations)
 
-This project implements a lightweight, open-source Wireless Intrusion Detection System (WIDS) using:
+# AI-Augmented WIDS
+### *Wireless Intrusion Detection Enhanced with Elastic Stack, Machine Learning, and AI Contextualization*
 
-- Raspberry Pi sensor(s)
-- Kismet for IEEE 802.11 management-frame capture
-- A custom `feature_extractor_api.py` script that polls the Kismet REST API
-- Direct ingestion into Elasticsearch (no Filebeat required)
-- Kibana dashboards for visualization of wireless activity and anomalies
-- Optional machine learning anomaly scoring
-- Optional AI contextualization using an MCP-compatible agent
+This project implements an **AI-augmented Wireless Intrusion Detection System (WIDS)** using:
 
-The entire system can run on a **single Raspberry Pi** for lab/demo scenarios or scale across multiple sensors with a centralized Elastic cluster.
+- **Kismet** for wireless telemetry acquisition  
+- **Elasticsearch + Kibana** for analytics and visualization  
+- **Custom Python feature extraction** (Kismet API → Elasticsearch)  
+- **Machine-learning anomaly detection** using Isolation Forest  
+- **Elastic’s Model Context Protocol (MCP)** for AI-driven contextual summaries  
+- **Docker-based modular deployment** for portability and reproducibility  
+
+The system is optimized for running on a **single Raspberry Pi** or on distributed nodes for scalable deployments.
 
 ---
 
-## Repository Contents
+## Table of Contents
+1. System Overview  
+2. Repository Structure  
+3. Architecture  
+4. Prerequisites  
+5. Environment File (.env)  
+6. Building Custom Containers  
+7. Running the System  
+8. Machine Learning Workflow  
+9. Using the MCP Server for AI Contextualization  
+10. Kibana Dashboards  
+11. Future Work  
+
+---
+
+## System Overview
+AI-Augmented-WIDS collects and analyzes wireless activity using:
+
+### 1. Data Acquisition
+- Kismet captures IEEE 802.11 management frames  
+- Feature Extractor container polls the Kismet REST API  
+- Extracted features are forwarded directly to Elasticsearch  
+
+### 2. Analytics & Machine Learning
+- ML trainer container builds an Isolation Forest anomaly model  
+- Live wireless telemetry is scored for unusual behavior  
+
+### 3. AI Contextualization
+- MCP server retrieves feature docs missing `context.summary`  
+- A local or remote LLM generates readable explanations  
+- Summaries are written back into Elasticsearch  
+
+---
+
+## Repository Structure
 
 ```
-.
-├── feature_extractor_api.py
+AI-Augmented-WIDS/
+│
+├── feature_extractor.py         # Polls Kismet API and stores feature docs in ES
+├── Dockerfile                   # Builds Feature Extractor container
+│
 ├── ml/
-│   ├── train_isolation_forest.ipynb
-│   └── model.joblib
+│   ├── train_iforest.py         # ML model trainer (Isolation Forest)
+│   ├── Dockerfile               # Builds ML training container
+│   └── ml_output/               # Model persistence
+│
 ├── dashboards/
-│   └── kibana_wids_dashboard.ndjson
-├── systemd/
-│   └── wids-feature-extractor.service
-├── config/
-│   └── elastic-index-template.json
+│   ├── kibana_wids_dashboard.ndjson
+│   ├── kibana_wids_dashboard_geo.ndjson
+│   └── README.md
+│
+├── kismet_elastic_pipeline.md   # Data flow documentation
+├── .env.example                 # Template environment file
 └── README.md
 ```
 
 ---
 
-## System Architecture
+## Architecture
 
 ```
-+-------------------------+        +-----------------------------+
-| Raspberry Pi Sensor     |        | Elasticsearch Server        |
-|-------------------------|        |-----------------------------|
-| • Kismet                | -----> | • Stores wireless features  |
-| • feature_extractor.py  |        | • Optional ML scoring       |
-| • Optional Edge ML      |        | • Anomaly aggregation       |
-+-------------------------+        +-----------------------------+
-               |
-               |
-               v
-+-----------------------------------------------+
-| Kibana Dashboards                             |
-| • SSID entropy, RSSI trends, rogue AP map     |
-| • Deauth/probe heatmaps                        |
-+-----------------------------------------------+
-
-(optional)
-               |
-               v
-+-----------------------------------------------+
-| AI / MCP Agent                                |
-| • Generates contextual explanations            |
-| • Identifies suspicious AP/client behaviors    |
-+-----------------------------------------------+
-```
-
----
-
-## 1. Install Kismet on the Raspberry Pi
-
-```bash
-sudo apt update
-sudo apt install kismet kismet-capture-linux-wifi
-```
-
-Test API:
-
-```bash
-curl http://localhost:2501/system/status.json
-```
-
-Start:
-
-```bash
-sudo systemctl enable kismet
-sudo systemctl start kismet
+┌──────────────────────────┐
+│      Raspberry Pi        │
+│  (or Linux sensor node)  │
+└─────────────┬────────────┘
+              │
+     ┌────────▼────────┐
+     │     Kismet      │
+     │  (monitor mode) │
+     └────────┬────────┘
+              │ REST API
+     ┌────────▼───────────────┐
+     │  Feature Extractor     │
+     │  (Docker container)    │
+     └────────┬───────────────┘
+              │ JSON docs
+     ┌────────▼────────┐
+     │ Elasticsearch   │ (vendor container)
+     └────────┬────────┘
+              │
+   ┌──────────▼───────────┐
+   │ ML Trainer Container │
+   │ (Isolation Forest)   │
+   └──────────┬───────────┘
+              │
+     ┌────────▼──────────────┐
+     │    MCP Server         │ (vendor container)
+     │   + Local LLM         │
+     └────────┬──────────────┘
+              │
+     ┌────────▼──────────┐
+     │     Kibana        │
+     │ Dashboards & UI   │
+     └────────────────────┘
 ```
 
 ---
 
-## 2. Install Elasticsearch + Kibana
+## Prerequisites
 
-Example (Docker):
+### Hardware
+- Raspberry Pi 4 or x86 Linux host  
+- USB Wi-Fi adapter with **monitor mode**  
 
-```bash
-sudo apt install docker.io
-sudo docker pull docker.elastic.co/elasticsearch/elasticsearch:9.1.3
-sudo docker.pull docker.elastic.co/kibana/kibana:9.1.3
+### Software
+- Docker & Docker Compose  
+- Kismet installed on host  
+
+Vendor containers:
+- `elasticsearch:8.x`  
+- `kibana:8.x`  
+- `mcp-server:latest`  
+
+---
+
+## Environment File (.env)
+
+Place a `.env` file at the repository root:
+
+```
+ES_URL=https://es01:9200
+ES_USERNAME=elastic
+ES_PASSWORD=changeme
+ES_INDEX=wids-wireless-features
+KISMET_URL=http://kismet:2501
+VERIFY_CERTS=false
 ```
 
-Run Elasticsearch:
+Copy `.env.example` to get started.
+
+---
+
+## Building Custom Containers
+
+### Feature Extractor
 
 ```bash
-sudo docker run -d --name es   -p 9200:9200   -e discovery.type=single-node   docker.elastic.co/elasticsearch/elasticsearch:9.1.3
+docker build -t wids-feature-extractor .
 ```
 
-Run Kibana:
+### ML Trainer
 
 ```bash
-sudo docker run -d --name kib   -p 5601:5601 --link es:elasticsearch   docker.elastic.co/kibana/kibana:9.1.3
+cd ml
+docker build -t wids-train-ml .
 ```
 
 ---
 
-## 3. Install Python Dependencies
+## Running the System
+
+### 1. Start Elasticsearch, Kibana, and MCP
 
 ```bash
-sudo apt install python3-pip
-pip3 install requests elasticsearch
+docker-compose up -d es01 kibana mcp
 ```
 
-(Optional ML):
+### 2. Run the Feature Extractor
 
 ```bash
-pip3 install scikit-learn pyod joblib
+docker run --rm \
+  --env-file .env \
+  --network elastic \
+  --name wids-extractor \
+  wids-feature-extractor
 ```
+
+### 3. Train Isolation Forest Model
+
+```bash
+docker run --rm \
+  --env-file ../.env \
+  --network elastic \
+  -v $(pwd)/ml_output:/app/ml_output \
+  wids-train-ml
+```
+
+### 4. Import Kibana Dashboards
+Kibana → Stack Management → Saved Objects → Import
 
 ---
 
-## 4. Running the Feature Extractor
+## Machine Learning Workflow
 
-```bash
-sudo mkdir -p /opt/wids
-sudo cp feature_extractor_api.py /opt/wids/
-sudo chmod +x /opt/wids/feature_extractor_api.py
-```
-
-Set environment variables:
-
-```bash
-export KISMET_URL="http://localhost:2501"
-export ES_URL="http://localhost:9200"
-export ES_INDEX="wids-wireless-features"
-export SENSOR_ID="pi-lab-01"
-export SENSOR_SITE="lab-a"
-export POLL_INTERVAL_SEC=10
-```
-
-Run manually:
-
-```bash
-python3 /opt/wids/feature_extractor_api.py
-```
+1. ML Trainer retrieves recent feature documents  
+2. Isolation Forest model is trained  
+3. Model saved to `ml/ml_output/model.pkl`  
+4. Feature Extractor loads model during ingestion  
+5. Wireless AP/device entries are scored in real time  
+6. Adds fields:
+   - `anomaly_score`  
+   - `anomaly_label`  
 
 ---
 
-## 5. systemd Service
+## Using the MCP Server for AI Contextualization
 
-```bash
-sudo cp systemd/wids-feature-extractor.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl.enable wids-feature-extractor
-sudo systemctl.start wids-feature-extractor
+The MCP server identifies documents missing contextual summaries.
+
+### For each feature document:
+1. Extracts relevant fields  
+2. Sends data to an LLM (local or external)  
+3. LLM generates an explanation, e.g.:
+
+```
+SSID entropy is unusually high and no manufacturer metadata is available.
+Signal strength is unstable and the device was first seen recently.
+Possible transient or rogue AP.
 ```
 
----
-
-## 6. Import Dashboards
-
-- Kibana → Stack Management → Saved Objects → Import  
-- Select `dashboards/kibana_wids_dashboard.ndjson`
+4. Writes `context.summary` back into Elasticsearch  
+5. Kibana dashboards display enriched analysis  
 
 ---
 
-## License
+## Kibana Dashboards
 
-MIT License
+Provided dashboards include:
+
+- SSID entropy over time  
+- Rogue AP indicators  
+- Device first-seen / last-seen timelines  
+- RSSI stability analysis  
+- AI contextual summaries panel  
+- Geo-map visualization (optional GPS module)  
+
+---
+
+## Future Work
+
+Possible extensions include:
+
+- Automated MCP-powered responses (event-driven remediation)  
+- Natural-language ChatUI for wireless investigations  
+- Multi-sensor triangulation for rogue AP localization  
+- Advanced ML models (LSTM, transformers)  
+- PHY-layer features (CSI, radiotap)  
+- Distributed inference across multiple sensor nodes  
+
+---
+
