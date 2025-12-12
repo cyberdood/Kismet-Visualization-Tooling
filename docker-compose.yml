@@ -1,0 +1,92 @@
+version: "3.9"
+
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.2.2
+    container_name: es01
+    environment:
+      - node.name=es01
+      - discovery.type=single-node
+      # Dev-mode: security/TLS disabled. If you already have a secured cluster,
+      # ignore this service and point ES_URL in .env at your existing ES.
+      - xpack.security.enabled=false
+      - xpack.security.http.ssl.enabled=false
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      - elastic
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:9.2.2
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://es01:9200
+    depends_on:
+      - elasticsearch
+    ports:
+      - "5601:5601"
+    networks:
+      - elastic
+
+  mcp:
+    image: docker.elastic.co/elastic/mcp-server:latest
+    container_name: elastic-mcp
+    # Adjust these to match your environment / LLM
+    environment:
+      - MCP_ELASTICSEARCH_URL=http://es01:9200
+      - MCP_ELASTICSEARCH_USERNAME=${ES_USERNAME:-elastic}
+      - MCP_ELASTICSEARCH_PASSWORD=${ES_PASSWORD:-changeme}
+      - MCP_ELASTICSEARCH_VERIFY_CERTS=false
+      # Example local LLM config (placeholder):
+      # - MCP_LLM_PROVIDER=llama
+      # - MCP_LLM_ENDPOINT=http://llm:8000
+    depends_on:
+      - elasticsearch
+    networks:
+      - elastic
+
+  feature-extractor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: wids-feature-extractor
+    container_name: wids-feature-extractor
+    env_file:
+      - .env
+    depends_on:
+      - elasticsearch
+    networks:
+      - elastic
+    # Uncomment for long-running daemon mode
+    # restart: unless-stopped
+
+  ml-trainer:
+    build:
+      context: ./ml
+      dockerfile: Dockerfile
+    image: wids-train-ml
+    container_name: wids-train-ml
+    env_file:
+      - .env
+    depends_on:
+      - elasticsearch
+    networks:
+      - elastic
+    volumes:
+      - ./ml/ml_output:/app/ml_output
+    # This is intended as a one-shot job; run with:
+    #   docker compose run --rm ml-trainer
+
+networks:
+  elastic:
+    driver: bridge
+
+volumes:
+  esdata:
