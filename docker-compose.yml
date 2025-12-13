@@ -35,22 +35,34 @@ services:
     networks:
       - elastic
 
+  # Optional: Elastic's MCP server container (you may not need this in 9.2+ if using Kibana's MCP endpoint)
   mcp:
     image: docker.elastic.co/elastic/mcp-server:latest
     container_name: elastic-mcp
-    # Adjust these to match your environment / LLM
     environment:
       - MCP_ELASTICSEARCH_URL=http://es01:9200
       - MCP_ELASTICSEARCH_USERNAME=${ES_USERNAME:-elastic}
       - MCP_ELASTICSEARCH_PASSWORD=${ES_PASSWORD:-changeme}
       - MCP_ELASTICSEARCH_VERIFY_CERTS=false
       # Example local LLM config (placeholder):
-      # - MCP_LLM_PROVIDER=llama
-      # - MCP_LLM_ENDPOINT=http://llm:8000
+      # - MCP_LLM_PROVIDER=ollama
+      # - MCP_LLM_ENDPOINT=http://ollama:11434
     depends_on:
       - elasticsearch
     networks:
       - elastic
+
+  # Local LLM for cost-effective enrichment
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama:/root/.ollama
+    networks:
+      - elastic
+    restart: unless-stopped
 
   feature-extractor:
     build:
@@ -66,6 +78,32 @@ services:
       - elastic
     # Uncomment for long-running daemon mode
     # restart: unless-stopped
+
+  # Autonomous enrichment worker (ES -> Ollama -> ES)
+  context-enricher:
+    build:
+      context: .
+      dockerfile: Dockerfile.context-enricher
+    image: wids-context-enricher
+    container_name: wids-context-enricher
+    env_file:
+      - .env
+    environment:
+      # Ensure the worker can reach Ollama on the compose network
+      - OLLAMA_URL=http://ollama:11434
+      # Set to match whatever you pulled in Ollama (example)
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.1}
+      # Polling behavior
+      - POLL_SECONDS=${POLL_SECONDS:-10}
+      - BATCH_SIZE=${BATCH_SIZE:-10}
+      - TIME_WINDOW=${TIME_WINDOW:-now-24h}
+      - WRITE_STRUCTURED_CONTEXT=${WRITE_STRUCTURED_CONTEXT:-true}
+    depends_on:
+      - elasticsearch
+      - ollama
+    networks:
+      - elastic
+    restart: unless-stopped
 
   ml-trainer:
     build:
@@ -90,3 +128,4 @@ networks:
 
 volumes:
   esdata:
+  ollama:
