@@ -51,7 +51,7 @@ AI-Augmented-WIDS/
 ├── Dockerfile
 ├── context_enricher/
 |   ├── context_enricher.py
-|   ├── Dockerfile.context-enricher
+|   └──Dockerfile.context-enricher
 ├── ml/
 │   ├── train_iforest.py
 │   ├── Dockerfile
