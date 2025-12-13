@@ -1,51 +1,45 @@
-
 # AI-Augmented WIDS
 ### *Wireless Intrusion Detection Enhanced with Elastic Stack, Machine Learning, and AI Contextualization*
 
-This project implements an **AI-augmented Wireless Intrusion Detection System (WIDS)** using:
+This project implements an **AI-augmented Wireless Intrusion Detection System (WIDS)** that combines open-source wireless telemetry collection, data analytics, machine-learning–based anomaly detection, and large language model (LLM)–driven contextual analysis.
 
-- **Kismet** for wireless telemetry acquisition  
-- **Elasticsearch + Kibana** for analytics and visualization  
-- **Custom Python feature extraction** (Kismet API → Elasticsearch)  
-- **Machine-learning anomaly detection** using Isolation Forest  
-- **Elastic’s Model Context Protocol (MCP)** for AI-driven contextual summaries  
-- **Docker-based modular deployment** for portability and reproducibility  
-
-The system is optimized for running on a **single Raspberry Pi** or on distributed nodes for scalable deployments.
+The system is designed to run on a **single Raspberry Pi** for lab and research use, while remaining modular and scalable for distributed or higher-throughput deployments.
 
 ---
 
-## Table of Contents
-1. System Overview  
-2. Repository Structure  
-3. Architecture  
-4. Prerequisites  
-5. Environment File (.env)  
-6. Building Custom Containers  
-7. Running the System  
-8. Machine Learning Workflow  
-9. Using the MCP Server for AI Contextualization  
-10. Kibana Dashboards  
-11. Future Work  
+## Key Technologies
+
+- **Kismet** — wireless telemetry collection (IEEE 802.11 management frames)
+- **Elasticsearch + Kibana** — centralized storage, analytics, dashboards
+- **Custom Python feature extraction** — Kismet REST API → Elasticsearch
+- **Machine learning (Isolation Forest)** — anomaly detection on wireless features
+- **AI Context Enricher (Ollama)** — autonomous LLM-based event contextualization
+- **Elastic Model Context Protocol (MCP)** — interactive AI analysis of Elastic data
+- **Docker / Docker Compose** — modular, portable deployment
 
 ---
 
 ## System Overview
-AI-Augmented-WIDS collects and analyzes wireless activity using:
 
-### 1. Data Acquisition
-- Kismet captures IEEE 802.11 management frames  
-- Feature Extractor container polls the Kismet REST API  
-- Extracted features are forwarded directly to Elasticsearch  
+AI-Augmented-WIDS processes wireless activity through four logical layers:
 
-### 2. Analytics & Machine Learning
-- ML trainer container builds an Isolation Forest anomaly model  
-- Live wireless telemetry is scored for unusual behavior  
+### Data Acquisition
+- Kismet captures IEEE 802.11 management frames
+- Feature Extractor polls the Kismet REST API
+- Structured feature documents are written to Elasticsearch
 
-### 3. AI Contextualization
-- MCP server retrieves feature docs missing `context.summary`  
-- A local or remote LLM generates readable explanations  
-- Summaries are written back into Elasticsearch  
+### Analytics & Anomaly Detection
+- Isolation Forest model trained in a container
+- Live wireless telemetry is scored for anomalies
+
+### AI Context Enrichment
+- Context Enricher finds docs missing `context.summary`
+- Ollama LLM generates threat context and mitigations
+- Context is written back into Elasticsearch
+
+### Visualization & Interactive AI
+- Kibana dashboards visualize activity and alerts
+- MCP enables interactive AI investigation of Elastic data
 
 ---
 
@@ -53,207 +47,63 @@ AI-Augmented-WIDS collects and analyzes wireless activity using:
 
 ```
 AI-Augmented-WIDS/
-│
-├── feature_extractor.py         # Polls Kismet API and stores feature docs in ES
-├── Dockerfile                   # Builds Feature Extractor container
-│
+├── feature_extractor.py
+├── Dockerfile
+├── context_enricher/
+|   ├── context_enricher.py
+|   ├── Dockerfile.context-enricher
 ├── ml/
-│   ├── train_iforest.py         # ML model trainer (Isolation Forest)
-│   ├── Dockerfile               # Builds ML training container
-│   └── ml_output/               # Model persistence
-│
+│   ├── train_iforest.py
+│   ├── Dockerfile
+│   └── ml_output/
 ├── dashboards/
 │   ├── kibana_wids_dashboard.ndjson
-│   ├── kibana_wids_dashboard_geo.ndjson
-│   └── README.md
-│
-├── kismet_elastic_pipeline.md   # Data flow documentation
-├── .env.example                 # Template environment file
+│   └── kibana_wids_dashboard_geo.ndjson
+├── docker-compose.context-enricher.snippet.yml
+├── .env.example
 └── README.md
-```
-
----
-
-## Architecture
-
-```
-┌──────────────────────────┐
-│      Raspberry Pi        │
-│  (or Linux sensor node)  │
-└─────────────┬────────────┘
-              │
-     ┌────────▼────────┐
-     │     Kismet      │
-     │  (monitor mode) │
-     └────────┬────────┘
-              │ REST API
-     ┌────────▼───────────────┐
-     │  Feature Extractor     │
-     │  (Docker container)    │
-     └────────┬───────────────┘
-              │ JSON docs
-     ┌────────▼────────┐
-     │ Elasticsearch   │ (vendor container)
-     └────────┬────────┘
-              │
-   ┌──────────▼───────────┐
-   │ ML Trainer Container │
-   │ (Isolation Forest)   │
-   └──────────┬───────────┘
-              │
-     ┌────────▼──────────────┐
-     │    MCP Server         │ (vendor container)
-     │   + Local LLM         │
-     └────────┬──────────────┘
-              │
-     ┌────────▼──────────┐
-     │     Kibana        │
-     │ Dashboards & UI   │
-     └────────────────────┘
 ```
 
 ---
 
 ## Prerequisites
 
-### Hardware
-- Raspberry Pi 5 (16GB RAM) or x86 Linux host  
-- USB Wi-Fi adapter with **monitor mode**  
-
-### Software
-- Docker & Docker Compose  
- 
-
-Vendor containers:
-- `elasticsearch:8.x`  
-- `kibana:8.x`  
-- `mcp-server:latest`  
+- Raspberry Pi 5 or x86 Linux
+- USB Wi-Fi adapter with monitor mode
+- Docker & Docker Compose
+- Kismet
 
 ---
 
 ## Environment File (.env)
 
-Place a `.env` file at the repository root:
-
-```
+```bash
 ES_URL=https://es01:9200
 ES_USERNAME=elastic
 ES_PASSWORD=changeme
 ES_INDEX=wids-wireless-features
+ES_VERIFY_CERTS=false
 KISMET_URL=http://kismet:2501
-VERIFY_CERTS=false
-```
-
-Copy `.env.example` to get started.
-
----
-
-## Building Custom Containers
-
-### Feature Extractor
-
-```bash
-docker build -t wids-feature-extractor .
-```
-
-### ML Trainer
-
-```bash
-cd ml
-docker build -t wids-train-ml .
+OLLAMA_URL=http://ollama:11434
+OLLAMA_MODEL=llama3.1
 ```
 
 ---
 
 ## Running the System
 
-### 1. Start Elasticsearch, Kibana, and MCP
-
 ```bash
-docker-compose up -d es01 kibana mcp
+docker compose up -d elasticsearch kibana ollama
+docker run --rm --env-file .env --network elastic wids-feature-extractor
+docker run --rm --env-file .env --network elastic -v $(pwd)/ml/ml_output:/app/ml_output wids-train-ml
+docker run -d --env-file .env --network elastic wids-context-enricher
 ```
-
-### 2. Run the Feature Extractor
-
-```bash
-docker run --rm \
-  --env-file .env \
-  --network elastic \
-  --name wids-extractor \
-  wids-feature-extractor
-```
-
-### 3. Train Isolation Forest Model
-
-```bash
-docker run --rm \
-  --env-file ../.env \
-  --network elastic \
-  -v $(pwd)/ml_output:/app/ml_output \
-  wids-train-ml
-```
-
-### 4. Import Kibana Dashboards
-Kibana → Stack Management → Saved Objects → Import
-
----
-
-## Machine Learning Workflow
-
-1. ML Trainer retrieves recent feature documents  
-2. Isolation Forest model is trained  
-3. Model saved to `ml/ml_output/model.pkl`  
-4. Feature Extractor loads model during ingestion  
-5. Wireless AP/device entries are scored in real time  
-6. Adds fields:
-   - `anomaly_score`  
-   - `anomaly_label`  
-
----
-
-## Using the MCP Server for AI Contextualization
-
-The MCP server identifies documents missing contextual summaries.
-
-### For each feature document:
-1. Extracts relevant fields  
-2. Sends data to an LLM (local or external)  
-3. LLM generates an explanation, e.g.:
-
-```
-SSID entropy is unusually high and no manufacturer metadata is available.
-Signal strength is unstable and the device was first seen recently.
-Possible transient or rogue AP.
-```
-
-4. Writes `context.summary` back into Elasticsearch  
-5. Kibana dashboards display enriched analysis  
-
----
-
-## Kibana Dashboards
-
-Provided dashboards include:
-
-- SSID entropy over time  
-- Rogue AP indicators  
-- Device first-seen / last-seen timelines  
-- RSSI stability analysis  
-- AI contextual summaries panel  
-- Geo-map visualization (optional GPS module)  
 
 ---
 
 ## Future Work
 
-Possible extensions include:
-
-- Automated MCP-powered responses (event-driven remediation)  
-- Natural-language ChatUI for wireless investigations  
-- Multi-sensor triangulation for rogue AP localization  
-- Advanced ML models (LSTM, transformers)  
-- PHY-layer features (CSI, radiotap)  
-- Distributed inference across multiple sensor nodes  
-
----
-
+- Event-driven remediation
+- MCP-powered Chat UI
+- Multi-sensor triangulation
+- Advanced ML models
