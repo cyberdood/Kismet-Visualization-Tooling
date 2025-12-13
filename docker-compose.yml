@@ -9,8 +9,8 @@ services:
       - discovery.type=single-node
       # Dev-mode: security/TLS disabled. If you already have a secured cluster,
       # ignore this service and point ES_URL in .env at your existing ES.
-      - xpack.security.enabled=false
-      - xpack.security.http.ssl.enabled=false
+      #- xpack.security.enabled=false
+      #- xpack.security.http.ssl.enabled=false
       - ES_JAVA_OPTS=-Xms1g -Xmx1g
     ulimits:
       memlock:
