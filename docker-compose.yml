@@ -21,7 +21,7 @@ services:
     ports:
       - "9200:9200"
     networks:
-      - elastic
+      - wids
 
   kibana:
     image: docker.elastic.co/kibana/kibana:9.2.2
@@ -33,7 +33,7 @@ services:
     ports:
       - "5601:5601"
     networks:
-      - elastic
+      - wids
 
   # Optional: Elastic's MCP server container (you may not need this in 9.2+ if using Kibana's MCP endpoint)
   mcp:
@@ -50,7 +50,7 @@ services:
     depends_on:
       - elasticsearch
     networks:
-      - elastic
+      - wids
 
   # Local LLM for cost-effective enrichment
   ollama:
@@ -61,7 +61,7 @@ services:
     volumes:
       - ollama:/root/.ollama
     networks:
-      - elastic
+      - wids
     restart: unless-stopped
 
   feature-extractor:
@@ -75,10 +75,21 @@ services:
     depends_on:
       - elasticsearch
     networks:
-      - elastic
+      - wids
     # Uncomment for long-running daemon mode
     # restart: unless-stopped
-
+    
+  kismet:
+    build:
+      context: ./kismet
+      dockerfile: Dockerfile
+    image: kismet
+    container_name: kismet
+    networks:
+      - wids
+    # Uncomment for long-running daemon mode
+    # restart: unless-stopped
+    
   # Autonomous enrichment worker (ES -> Ollama -> ES)
   context-enricher:
     build:
@@ -102,7 +113,7 @@ services:
       - elasticsearch
       - ollama
     networks:
-      - elastic
+      - wids
     restart: unless-stopped
 
   ml-trainer:
@@ -116,14 +127,14 @@ services:
     depends_on:
       - elasticsearch
     networks:
-      - elastic
+      - wids
     volumes:
       - ./ml/ml_output:/app/ml_output
     # This is intended as a one-shot job; run with:
     #   docker compose run --rm ml-trainer
 
 networks:
-  elastic:
+  wids:
     driver: bridge
 
 volumes:
