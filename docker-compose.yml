@@ -77,7 +77,7 @@ services:
     networks:
       - wids
     # Uncomment for long-running daemon mode
-    # restart: unless-stopped
+    restart: unless-stopped
     
   kismet:
     build:
