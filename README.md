@@ -47,8 +47,9 @@ AI-Augmented-WIDS processes wireless activity through four logical layers:
 
 ```
 AI-Augmented-WIDS/
-├── feature_extractor.py
-├── Dockerfile
+├── feature_extractor
+|   ├──feature_extractor.py
+|   └──Dockerfile
 ├── context_enricher/
 |   ├── context_enricher.py
 |   └──Dockerfile.context-enricher
@@ -59,8 +60,8 @@ AI-Augmented-WIDS/
 ├── dashboards/
 │   ├── kibana_wids_dashboard.ndjson
 │   └── kibana_wids_dashboard_geo.ndjson
-├── docker-compose.context-enricher.snippet.yml
-├── .env.example
+├── docker-compose.yml
+├── .env
 └── README.md
 ```
 
