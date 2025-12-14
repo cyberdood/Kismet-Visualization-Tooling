@@ -40,7 +40,7 @@ services:
     image: docker.elastic.co/elastic/mcp-server:latest
     container_name: elastic-mcp
     environment:
-      - MCP_ELASTICSEARCH_URL=http://es01:9200
+      - MCP_ELASTICSEARCH_URL=https://es01:9200
       - MCP_ELASTICSEARCH_USERNAME=${ES_USERNAME:-elastic}
       - MCP_ELASTICSEARCH_PASSWORD=${ES_PASSWORD:-changeme}
       - MCP_ELASTICSEARCH_VERIFY_CERTS=false
