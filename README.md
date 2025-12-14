@@ -1,4 +1,14 @@
 # AI-Augmented WIDS
+
+![GitHub stars](https://img.shields.io/github/stars/cyberdood/AI-Augmented-WIDS)
+![GitHub forks](https://img.shields.io/github/forks/cyberdood/AI-Augmented-WIDS)
+![GitHub watchers](https://img.shields.io/github/watchers/cyberdood/AI-Augmented-WIDS)
+![GitHub repo size](https://img.shields.io/github/repo-size/cyberdood/AI-Augmented-WIDS)
+![GitHub language count](https://img.shields.io/github/languages/count/cyberdood/AI-Augmented-WIDS)
+![GitHub top language](https://img.shields.io/github/languages/top/cyberdood/AI-Augmented-WIDS)
+![GitHub last commit](https://img.shields.io/github/last-commit/cyberdood/AI-Augmented-WIDS)
+![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https://github.com/cyberdood/AI-Augmented-WIDS)
+
 ### *Wireless Intrusion Detection Enhanced with Elastic Stack, Machine Learning, and AI Contextualization*
 
 This project implements an **AI-augmented Wireless Intrusion Detection System (WIDS)** that combines open-source wireless telemetry collection, data analytics, machine-learning–based anomaly detection, and large language model (LLM)–driven contextual analysis.
