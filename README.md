@@ -81,7 +81,7 @@ AI-Augmented-WIDS/
 
 ## Prerequisites
 
-- Raspberry Pi 5 or x86 Linux
+- Raspberry Pi 5 running any Linux Distro
 - USB Wi-Fi adapter with monitor mode
 - Docker & Docker Compose
 - Kismet
